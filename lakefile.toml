@@ -1,0 +1,58 @@
+name = "MechProof"
+version = "0.1.0"
+defaultTargets = ["mechproof", "verify_finger", "verify_tendon", "verify_hand", "verify_arm", "verify_legs", "verify_walking", "verify_capture", "verify_energy", "verify_subsea", "verify_env_matrix", "verify_heavy", "verify_safety"]
+
+[[lean_lib]]
+name = "MechProof"
+
+[[lean_exe]]
+name = "mechproof"
+root = "Main"
+
+[[lean_exe]]
+name = "verify_finger"
+root = "VerifyFinger"
+
+[[lean_exe]]
+name = "verify_tendon"
+root = "VerifyTendon"
+
+[[lean_exe]]
+name = "verify_hand"
+root = "VerifyHand"
+
+[[lean_exe]]
+name = "verify_arm"
+root = "VerifyArm"
+
+[[lean_exe]]
+name = "verify_legs"
+root = "VerifyLegs"
+
+[[lean_exe]]
+name = "verify_walking"
+root = "VerifyWalking"
+
+[[lean_exe]]
+name = "verify_capture"
+root = "VerifyCapture"
+
+[[lean_exe]]
+name = "verify_energy"
+root = "VerifyEnergy"
+
+[[lean_exe]]
+name = "verify_subsea"
+root = "VerifySubsea"
+
+[[lean_exe]]
+name = "verify_env_matrix"
+root = "VerifyEnvMatrix"
+
+[[lean_exe]]
+name = "verify_heavy"
+root = "VerifyHeavy"
+
+[[lean_exe]]
+name = "verify_safety"
+root = "VerifySafety"

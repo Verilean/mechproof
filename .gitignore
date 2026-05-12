@@ -1,0 +1,26 @@
+# Generated artefacts: everything in this directory is reproduced by
+# `make poc16` (or any earlier PoC orchestrator). Keep it out of git so
+# the repo stays source-only.
+out/
+
+# Python virtual environment (pip-installed cadquery + mujoco lives here;
+# the dependency list is captured implicitly by `shell.nix` and the
+# manual `./venv/bin/pip install ...` calls noted in the PoC scripts).
+venv/
+
+# Lean / Lake build artefacts.
+.lake/
+build/
+lake-packages/
+*.olean
+*.ilean
+*.hash
+*.trace
+
+# Editor / OS noise.
+*~
+*.bak
+*.swp
+.DS_Store
+__pycache__/
+*.pyc
