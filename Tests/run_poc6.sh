@@ -6,7 +6,7 @@
 # 4) MuJoCo combined arm+hand digital twin.
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 mkdir -p out
 
 echo "[1/4] Lean 4 Arm Torque Verification..."

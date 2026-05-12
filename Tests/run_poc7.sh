@@ -6,9 +6,9 @@
 # 4) Release zip (Verified_Robotic_System_v1.0.zip).
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
-./run_poc6.sh
+./Tests/run_poc6.sh
 
 echo
 echo "[5/6] Running MuJoCo grasp matrix..."

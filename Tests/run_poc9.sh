@@ -9,17 +9,17 @@
 #   5. Bundle MechProof_Humanoid_v1.0.zip.
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
 # Stages 1-3 are full sub-pipelines; each halts the orchestrator on Lean
 # proof failure thanks to its own `set -e`.
-./run_poc6.sh
+./Tests/run_poc6.sh
 
 echo
 echo "Running grasp matrix..."
 ./venv/bin/python python/simulate_grasp_matrix.py
 
-./run_poc8.sh
+./Tests/run_poc8.sh
 
 echo
 echo "Generating humanoid executive summary..."

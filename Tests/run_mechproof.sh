@@ -5,7 +5,7 @@
 # 3) Run CadQuery to materialise `out/verified_case.step`.
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 mkdir -p out
 
 echo "[1/2] Lean verification…"

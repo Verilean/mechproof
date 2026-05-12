@@ -6,10 +6,10 @@
 # 4) v2 teleop sim with per-step energy logging → energy_profile.json.
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 mkdir -p out
 
-./run_poc11.sh
+./Tests/run_poc11.sh
 
 echo
 echo "[9/12] Lean 4 Energy / Mission Verification..."

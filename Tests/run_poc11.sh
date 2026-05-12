@@ -7,10 +7,10 @@
 # 4) Headless teleop with head camera + IMU.
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 mkdir -p out
 
-./run_poc10.sh
+./Tests/run_poc10.sh
 
 echo
 echo "[5/8] Lean 4 Capture-Point Verification..."

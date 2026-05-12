@@ -5,10 +5,10 @@
 # 3) MuJoCo current-face simulation in seawater.
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 mkdir -p out
 
-./run_poc8.sh > /dev/null
+./Tests/run_poc8.sh > /dev/null
 
 echo
 echo "[Subsea 1/2] Lean 4 Subsea Integrity Verification..."

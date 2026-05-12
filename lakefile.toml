@@ -5,54 +5,59 @@ defaultTargets = ["mechproof", "verify_finger", "verify_tendon", "verify_hand", 
 [[lean_lib]]
 name = "MechProof"
 
+# Tests/ holds one Lean source per `verify_*` executable + a Main.lean.
+# Each is its own `lean_exe.root` (e.g. `Tests.VerifyHand`), so we don't
+# need an explicit Tests library declaration — Lake discovers them via
+# the exe roots.
+
 [[lean_exe]]
 name = "mechproof"
-root = "Main"
+root = "Tests.Main"
 
 [[lean_exe]]
 name = "verify_finger"
-root = "VerifyFinger"
+root = "Tests.VerifyFinger"
 
 [[lean_exe]]
 name = "verify_tendon"
-root = "VerifyTendon"
+root = "Tests.VerifyTendon"
 
 [[lean_exe]]
 name = "verify_hand"
-root = "VerifyHand"
+root = "Tests.VerifyHand"
 
 [[lean_exe]]
 name = "verify_arm"
-root = "VerifyArm"
+root = "Tests.VerifyArm"
 
 [[lean_exe]]
 name = "verify_legs"
-root = "VerifyLegs"
+root = "Tests.VerifyLegs"
 
 [[lean_exe]]
 name = "verify_walking"
-root = "VerifyWalking"
+root = "Tests.VerifyWalking"
 
 [[lean_exe]]
 name = "verify_capture"
-root = "VerifyCapture"
+root = "Tests.VerifyCapture"
 
 [[lean_exe]]
 name = "verify_energy"
-root = "VerifyEnergy"
+root = "Tests.VerifyEnergy"
 
 [[lean_exe]]
 name = "verify_subsea"
-root = "VerifySubsea"
+root = "Tests.VerifySubsea"
 
 [[lean_exe]]
 name = "verify_env_matrix"
-root = "VerifyEnvMatrix"
+root = "Tests.VerifyEnvMatrix"
 
 [[lean_exe]]
 name = "verify_heavy"
-root = "VerifyHeavy"
+root = "Tests.VerifyHeavy"
 
 [[lean_exe]]
 name = "verify_safety"
-root = "VerifySafety"
+root = "Tests.VerifySafety"

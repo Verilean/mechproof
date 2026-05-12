@@ -5,7 +5,7 @@
 # 3) MuJoCo grasp simulation against a cylinder target.
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 mkdir -p out
 
 echo "[1/3] Lean 4 Tendon Verification..."

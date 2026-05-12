@@ -5,7 +5,7 @@
 # 3) MuJoCo 6-DOF pinch simulation.
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 mkdir -p out
 
 echo "[1/3] Lean 4 Full Hand Collision Verification..."

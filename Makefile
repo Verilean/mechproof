@@ -191,10 +191,10 @@ humanoid-summary: ## PoC 9 full humanoid executive summary.
 	$(NIX_RUN) "$(VENV_PY) $(REPO)/python/generate_humanoid_summary.py"
 
 release-arm-hand: ## PoC 7 archive: Verified_Robotic_System_v1.0.zip (arm + hand only).
-	$(NIX_RUN) "$(REPO)/run_poc7.sh"
+	$(NIX_RUN) "$(REPO)/Tests/run_poc7.sh"
 
 release: ## PoC 9 archive: MechProof_Humanoid_v1.0.zip (full 30-DOF system).
-	$(NIX_RUN) "$(REPO)/run_poc9.sh"
+	$(NIX_RUN) "$(REPO)/Tests/run_poc9.sh"
 
 cert: ## PoC 5 manufacturing certificate (consumes Lean DFM JSON).
 	$(NIX_RUN) "$(VENV_PY) $(REPO)/python/generate_dfm_report.py"
@@ -204,50 +204,50 @@ cert: ## PoC 5 manufacturing certificate (consumes Lean DFM JSON).
 # ───────────────────────────────────────────────────────────────────
 
 poc1: ## PoC 1: drafted moldable case.
-	$(NIX_RUN) "$(REPO)/run_mechproof.sh"
+	$(NIX_RUN) "$(REPO)/Tests/run_mechproof.sh"
 
 poc2: ## PoC 2: kinematic finger + MuJoCo digital twin.
-	$(NIX_RUN) "$(REPO)/run_poc2.sh"
+	$(NIX_RUN) "$(REPO)/Tests/run_poc2.sh"
 
 poc3: ## PoC 3: tendon-driven grasping.
-	$(NIX_RUN) "$(REPO)/run_poc3.sh"
+	$(NIX_RUN) "$(REPO)/Tests/run_poc3.sh"
 
 poc4: ## PoC 4: full 6-DOF hand + collision proof.
-	$(NIX_RUN) "$(REPO)/run_poc4.sh"
+	$(NIX_RUN) "$(REPO)/Tests/run_poc4.sh"
 
 poc5: ## PoC 5: DFM-certified hand (the headline pipeline).
-	$(NIX_RUN) "$(REPO)/run_poc5.sh"
+	$(NIX_RUN) "$(REPO)/Tests/run_poc5.sh"
 
 poc6: ## PoC 6: 6-DOF arm + 5-finger hand carrying a 2 kg payload.
-	$(NIX_RUN) "$(REPO)/run_poc6.sh"
+	$(NIX_RUN) "$(REPO)/Tests/run_poc6.sh"
 
 poc7: release ## PoC 7: grasp matrix + executive summary + release archive.
 
 poc8: ## PoC 8: humanoid lower-body balance + drop-and-stand.
-	$(NIX_RUN) "$(REPO)/run_poc8.sh"
+	$(NIX_RUN) "$(REPO)/Tests/run_poc8.sh"
 
 poc9: release ## PoC 9: full 30-DOF humanoid release archive.
 
 poc10: ## PoC 10: dynamic walking (ZMP proof + quasi-static gait).
-	$(NIX_RUN) "$(REPO)/run_poc10.sh"
+	$(NIX_RUN) "$(REPO)/Tests/run_poc10.sh"
 
 poc11: ## PoC 11: Capture-Point proof + URDF + headless teleop.
-	$(NIX_RUN) "$(REPO)/run_poc11.sh"
+	$(NIX_RUN) "$(REPO)/Tests/run_poc11.sh"
 
 poc12: ## PoC 12: energy proof + Battery_Life_Certificate + power-aware teleop.
-	$(NIX_RUN) "$(REPO)/run_poc12.sh"
+	$(NIX_RUN) "$(REPO)/Tests/run_poc12.sh"
 
 poc13: ## PoC 13: subsea pressure / buoyancy / drag proofs + seawater sim.
-	$(NIX_RUN) "$(REPO)/run_poc13.sh"
+	$(NIX_RUN) "$(REPO)/Tests/run_poc13.sh"
 
 poc14: ## PoC 14: env-matrix proof + per-env release ZIPs + master catalog.
-	$(NIX_RUN) "$(REPO)/run_poc14.sh"
+	$(NIX_RUN) "$(REPO)/Tests/run_poc14.sh"
 
 poc15: ## PoC 15: 4 m heavy-machinery scale-up (hydraulics + steel).
-	$(NIX_RUN) "$(REPO)/run_poc15.sh"
+	$(NIX_RUN) "$(REPO)/Tests/run_poc15.sh"
 
 poc16: ## PoC 16: piloted-mech safety proofs + override/crash sim.
-	$(NIX_RUN) "$(REPO)/run_poc16.sh"
+	$(NIX_RUN) "$(REPO)/Tests/run_poc16.sh"
 
 release-all: poc14 ## Alias for the multi-environment master catalog.
 
@@ -285,40 +285,40 @@ test: test-moldability test-tendon test-collision test-dfm-wall test-dfm-hole te
 	@echo "All negative tests passed: Lean correctly rejected every bad design."
 
 test-moldability: ## PoC 1: setting draftDeg = -1° must fail.
-	$(call expect_fail,$(LEAN_DIR)/Main.lean,s|draftDeg := 2.0|draftDeg := -1.0|,cd $(LEAN_DIR) && lake build mechproof)
+	$(call expect_fail,$(LEAN_DIR)/Tests/Main.lean,s|draftDeg := 2.0|draftDeg := -1.0|,cd $(LEAN_DIR) && lake build mechproof)
 
 test-tendon: ## PoC 3: a negative tendon moment arm must fail.
-	$(call expect_fail,$(LEAN_DIR)/VerifyTendon.lean,s|r2 := 2.5|r2 := -1.0|,cd $(LEAN_DIR) && lake build verify_tendon)
+	$(call expect_fail,$(LEAN_DIR)/Tests/VerifyTendon.lean,s|r2 := 2.5|r2 := -1.0|,cd $(LEAN_DIR) && lake build verify_tendon)
 
 test-collision: ## PoC 4: thumb mounted on top of index must fail clearance.
-	$(call expect_fail,$(LEAN_DIR)/VerifyHand.lean,s|px :=  0.045$(comma) py := 0.020|px :=  0.026$(comma) py := 0.055|,cd $(LEAN_DIR) && lake build verify_hand)
+	$(call expect_fail,$(LEAN_DIR)/Tests/VerifyHand.lean,s|px :=  0.045$(comma) py := 0.020|px :=  0.026$(comma) py := 0.055|,cd $(LEAN_DIR) && lake build verify_hand)
 
 test-dfm-wall: ## PoC 5: a 2 mm finger fails the MIN_WALL_THICKNESS rule.
-	$(call expect_fail,$(LEAN_DIR)/VerifyHand.lean,s|thickness := 10.0|thickness := 2.0|,cd $(LEAN_DIR) && lake build verify_hand)
+	$(call expect_fail,$(LEAN_DIR)/Tests/VerifyHand.lean,s|thickness := 10.0|thickness := 2.0|,cd $(LEAN_DIR) && lake build verify_hand)
 
 test-dfm-hole: ## PoC 5: a 0.6 mm-diameter tendon hole fails MIN_TENDON_HOLE_DIA.
-	$(call expect_fail,$(LEAN_DIR)/VerifyHand.lean,s|channelRadius := 0.0006|channelRadius := 0.0003|g,cd $(LEAN_DIR) && lake build verify_hand)
+	$(call expect_fail,$(LEAN_DIR)/Tests/VerifyHand.lean,s|channelRadius := 0.0006|channelRadius := 0.0003|g,cd $(LEAN_DIR) && lake build verify_hand)
 
 test-torque: ## PoC 6: a 5 N·m shoulder stall torque cannot hold the payload.
-	$(call expect_fail,$(LEAN_DIR)/VerifyArm.lean,s|tauShoulder := 30.0|tauShoulder := 5.0|,cd $(LEAN_DIR) && lake build verify_arm)
+	$(call expect_fail,$(LEAN_DIR)/Tests/VerifyArm.lean,s|tauShoulder := 30.0|tauShoulder := 5.0|,cd $(LEAN_DIR) && lake build verify_arm)
 
 test-balance: ## PoC 8: a 20 mm-long foot shrinks the support polygon below the balance margin.
-	$(call expect_fail,$(LEAN_DIR)/VerifyLegs.lean,s|footLen     := 0.16|footLen     := 0.02|,cd $(LEAN_DIR) && lake build verify_legs)
+	$(call expect_fail,$(LEAN_DIR)/Tests/VerifyLegs.lean,s|footLen     := 0.16|footLen     := 0.02|,cd $(LEAN_DIR) && lake build verify_legs)
 
 test-zmp: ## PoC 10: an over-aggressive accel (5 m/s²) drives the ZMP outside the foot.
-	$(call expect_fail,$(LEAN_DIR)/VerifyWalking.lean,s|accX := 0.0|accX := 5.0|g,cd $(LEAN_DIR) && lake build verify_walking)
+	$(call expect_fail,$(LEAN_DIR)/Tests/VerifyWalking.lean,s|accX := 0.0|accX := 5.0|g,cd $(LEAN_DIR) && lake build verify_walking)
 
 test-capture: ## PoC 11: a 5 m/s forward velocity flies the capture point outside the next foot.
-	$(call expect_fail,$(LEAN_DIR)/VerifyCapture.lean,s|velY := 0.30|velY := 5.00|g,cd $(LEAN_DIR) && lake build verify_capture)
+	$(call expect_fail,$(LEAN_DIR)/Tests/VerifyCapture.lean,s|velY := 0.30|velY := 5.00|g,cd $(LEAN_DIR) && lake build verify_capture)
 
 test-energy: ## PoC 12: a 100 Wh battery is too small for a 1-h walking mission.
-	$(call expect_fail,$(LEAN_DIR)/VerifyEnergy.lean,s|BATTERY_WH       : Float := 800.0|BATTERY_WH       : Float := 100.0|,cd $(LEAN_DIR) && lake build verify_energy)
+	$(call expect_fail,$(LEAN_DIR)/Tests/VerifyEnergy.lean,s|BATTERY_WH       : Float := 800.0|BATTERY_WH       : Float := 100.0|,cd $(LEAN_DIR) && lake build verify_energy)
 
 test-crush: ## PoC 13: at Mariana-trench pressure the joint gaps close → Lean rejects.
-	$(call expect_fail,$(LEAN_DIR)/VerifySubsea.lean,s|EnvironmentParams.subsea500m|EnvironmentParams.marianaTrench|,cd $(LEAN_DIR) && lake build verify_subsea)
+	$(call expect_fail,$(LEAN_DIR)/Tests/VerifySubsea.lean,s|EnvironmentParams.subsea500m|EnvironmentParams.marianaTrench|,cd $(LEAN_DIR) && lake build verify_subsea)
 
 test-square-cube: ## PoC 15: a 4 m robot with PoC 8 small motors fails Lean's torque proof.
-	$(call expect_fail,$(LEAN_DIR)/VerifyHeavy.lean,s|Actuator.heavyDutyHydraulic|Actuator.smallElectric|,cd $(LEAN_DIR) && lake build verify_heavy)
+	$(call expect_fail,$(LEAN_DIR)/Tests/VerifyHeavy.lean,s|Actuator.heavyDutyHydraulic|Actuator.smallElectric|,cd $(LEAN_DIR) && lake build verify_heavy)
 
 test-lethal-crash: ## PoC 16: stiff arms (braceStroke 10 mm) → cockpit G 100 > 15 → Lean rejects.
-	$(call expect_fail,$(LEAN_DIR)/VerifySafety.lean,s|braceStrokeM := 0.10|braceStrokeM := 0.01|,cd $(LEAN_DIR) && lake build verify_safety)
+	$(call expect_fail,$(LEAN_DIR)/Tests/VerifySafety.lean,s|braceStrokeM := 0.10|braceStrokeM := 0.01|,cd $(LEAN_DIR) && lake build verify_safety)

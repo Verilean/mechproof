@@ -6,13 +6,13 @@
 # 4) Per-environment release ZIPs + master catalog ZIP.
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 mkdir -p out
 
 # PoC 12 builds arm + hand + legs + URDF + energy artefacts. PoC 13 is
 # layered on top here so the catalog gets subsea-specific outputs too.
-./run_poc12.sh > /dev/null
-./run_poc13.sh > /dev/null
+./Tests/run_poc12.sh > /dev/null
+./Tests/run_poc13.sh > /dev/null
 
 echo
 echo "[14a] Lean 4 environment-matrix verification..."

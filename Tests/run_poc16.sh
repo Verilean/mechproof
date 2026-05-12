@@ -5,10 +5,10 @@
 # 3) MuJoCo two-phase simulation (reckless input + controlled drop).
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 mkdir -p out
 
-./run_poc15.sh > /dev/null
+./Tests/run_poc15.sh > /dev/null
 
 echo
 echo "[Safety 1/2] Lean 4 Manned-Mech Safety Verification..."

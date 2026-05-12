@@ -5,7 +5,7 @@
 # 3) MuJoCo drop-and-stand simulation.
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 mkdir -p out
 
 echo "[1/3] Lean 4 Lower-Body Balance + Torque Verification..."

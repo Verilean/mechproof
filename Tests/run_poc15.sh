@@ -5,10 +5,10 @@
 # 3) MuJoCo scaled stand-firm test.
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 mkdir -p out
 
-./run_poc8.sh > /dev/null
+./Tests/run_poc8.sh > /dev/null
 
 echo
 echo "[Heavy 1/2] Lean 4 Heavy-Machinery Verification..."

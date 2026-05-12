@@ -5,7 +5,7 @@
 # 3) MuJoCo digital-twin simulation.         (finger.xml + Verification_Report.txt)
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 mkdir -p out
 
 echo "[1/3] Lean 4 Kinematic Verification..."

@@ -6,7 +6,7 @@
 # 4) MuJoCo quasi-static walking simulation.
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 mkdir -p out
 
 echo "[1/4] Lean 4 ZMP Stability Verification..."
@@ -19,7 +19,7 @@ echo "[2/4] Generating Walking Trajectory..."
 ./venv/bin/python python/generate_walking_trajectory.py
 
 echo "[3/4] Ensuring humanoid scene is up to date (PoC 8)..."
-./run_poc8.sh > /dev/null
+./Tests/run_poc8.sh > /dev/null
 
 echo "[4/4] MuJoCo Quasi-Static Walking Simulation..."
 ./venv/bin/python python/simulate_walking.py
