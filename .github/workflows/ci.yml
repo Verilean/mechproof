@@ -92,8 +92,14 @@ jobs:
       - name: Install OSMesa (headless GL for MuJoCo on Ubuntu)
         run: |
           sudo apt-get update
+          # PyOpenGL (pulled in by mujoco's osmesa backend) loads
+          # libGL.so via ctypes at import time, so we need both the
+          # OSMesa software-rasteriser AND the regular libGL.so even
+          # though we never actually use a GPU.
           sudo apt-get install -y --no-install-recommends \
-            libosmesa6 libosmesa6-dev libglu1-mesa
+            libosmesa6 libosmesa6-dev \
+            libgl1 libglu1-mesa \
+            libegl1
 
       - name: Install Nix
         uses: cachix/install-nix-action@v27
