@@ -27,10 +27,11 @@ comma      := ,
 # heredocs and `set -e` semantics inside negative tests behave predictably.
 NIX_RUN    := nix-shell $(REPO)/shell.nix --run
 
-# Headless OpenGL backend for MuJoCo.  Default to EGL (works locally on
-# NixOS with libglvnd); CI overrides this to `osmesa` because the
-# GitHub Actions ubuntu runner doesn't expose an EGL device. Pass on
-# the command line:  `make preview MUJOCO_GL=osmesa`.
+# MuJoCo's offscreen renderer (`mujoco.Renderer`) only runs PoC 11's
+# `simulate_v2.py`, which uses MuJoCo's own head-camera. We default to
+# EGL; on the rare CI box without an EGL device, set MUJOCO_GL=osmesa.
+# The standalone scene-preview renderer (`make preview`) does **not**
+# use MuJoCo's GL stack — it routes through WebGPU instead.
 MUJOCO_GL ?= egl
 
 .DEFAULT_GOAL := help
@@ -41,7 +42,7 @@ MUJOCO_GL ?= egl
         grasp-matrix summary release release-arm-hand release-all humanoid-summary \
         leg-cad humanoid-sim \
         walking-trajectory walk-sim urdf teleop \
-        heavy-sim safety-sim preview preview-webgpu \
+        heavy-sim safety-sim preview \
         verify-finger verify-tendon verify-hand verify-arm verify-legs \
         verify-walking verify-capture verify-energy verify-subsea \
         verify-env-matrix verify-heavy verify-safety verify-all env-matrix \
@@ -187,11 +188,8 @@ heavy-sim: ## PoC 15 MuJoCo 4 m stand-firm simulation + Heavy_Construction_Catal
 safety-sim: ## PoC 16 manned-mech safety sim (override + crash brace).
 	$(NIX_RUN) "$(VENV_PY) $(REPO)/python/simulate_manned.py"
 
-preview: ## Render every generated MuJoCo scene to PNGs (OpenGL/EGL).
-	$(NIX_RUN) "MUJOCO_GL=$(MUJOCO_GL) $(VENV_PY) $(REPO)/python/render_overviews.py"
-
-preview-webgpu: ## Render every generated scene to PNGs via WebGPU (no OpenGL).
-	$(NIX_RUN) "WGPU_BACKEND_TYPE=Vulkan $(VENV_PY) $(REPO)/python/render_overviews_webgpu.py"
+preview: ## Render every generated MuJoCo scene to PNGs via WebGPU.
+	$(NIX_RUN) "WGPU_BACKEND_TYPE=Vulkan $(VENV_PY) $(REPO)/python/render_overviews.py"
 
 grasp-matrix: ## PoC 7 grasp-matrix sim (sphere/box/cylinder → grasp_matrix.json).
 	$(NIX_RUN) "$(VENV_PY) $(REPO)/python/simulate_grasp_matrix.py"

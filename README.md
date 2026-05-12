@@ -334,7 +334,7 @@ pull request. Two jobs execute in parallel:
 | Job | What it does | Typical duration |
 |---|---|---|
 | `lean-proofs` | `lake build` every verify exe, then `make verify-all` and `make test` (13 negatives) | ~5 min |
-| `cad-and-sim` | Full `make poc16` (Lean → CAD → MuJoCo → reports) plus `make preview` (renders every scene from 4 angles to PNG) | ~25 min |
+| `cad-and-sim` | `make poc15` (Lean → CAD → MuJoCo physics for the 4 m heavy mech) plus `make preview` — a pygfx/WebGPU renderer that draws each scene from 4 angles to PNG, with **zero OpenGL dependency** | ~25 min |
 
 The `cad-and-sim` job uploads `out/` as an **artifact**
 (`mechproof-out-<sha>`) containing:
@@ -344,7 +344,7 @@ The `cad-and-sim` job uploads `out/` as an **artifact**
 * **MuJoCo `.xml` scenes** — drop-in for IsaacSim / Brax / RaiSim too
 * **JSON specs** — Lean-certified ground-truth values
 * **PNG previews** — `preview_<scene>_<angle>.png` (front / side / iso /
-  top) plus the in-cockpit head-camera shots from PoC 11
+  top), rendered offscreen via WebGPU (Vulkan + Lavapipe, no OpenGL)
 * **Reports** — `Manufacturing_Certificate.txt`, `Stand_Report.txt`,
   `Heavy_Construction_Catalog.txt`, `Manned_Safety_Report.txt`, …
 * **URDF** — `mechproof_humanoid.urdf` (ROS 2 / Gazebo / RViz)
