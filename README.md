@@ -326,6 +326,35 @@ the PoC scripts' comments if you're starting fresh.
 
 ------------------------------------------------------------------------
 
+## Continuous Integration
+
+`.github/workflows/ci.yml` runs on every push to `main` and on every
+pull request. Two jobs execute in parallel:
+
+| Job | What it does | Typical duration |
+|---|---|---|
+| `lean-proofs` | `lake build` every verify exe, then `make verify-all` and `make test` (13 negatives) | ~5 min |
+| `cad-and-sim` | Full `make poc16` (Lean → CAD → MuJoCo → reports) plus `make preview` (renders every scene from 4 angles to PNG) | ~25 min |
+
+The `cad-and-sim` job uploads `out/` as an **artifact**
+(`mechproof-out-<sha>`) containing:
+
+* **STEP files** — every CAD part (palm, fingers, arm links, torso,
+  legs, foot, brackets, wrist flange, heavy-machinery tubes)
+* **MuJoCo `.xml` scenes** — drop-in for IsaacSim / Brax / RaiSim too
+* **JSON specs** — Lean-certified ground-truth values
+* **PNG previews** — `preview_<scene>_<angle>.png` (front / side / iso /
+  top) plus the in-cockpit head-camera shots from PoC 11
+* **Reports** — `Manufacturing_Certificate.txt`, `Stand_Report.txt`,
+  `Heavy_Construction_Catalog.txt`, `Manned_Safety_Report.txt`, …
+* **URDF** — `mechproof_humanoid.urdf` (ROS 2 / Gazebo / RViz)
+
+Download the zip from the PR's "Checks" tab → "Summary" → "Artifacts"
+section, unzip, and review the geometry without needing any CAD viewer
+installed locally — every part has at least one rendered preview.
+
+------------------------------------------------------------------------
+
 ## License
 
 Licensed under the **Apache License, Version 2.0** — see

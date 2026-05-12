@@ -1,0 +1,155 @@
+name: MechProof CI
+
+# Run on every push to main and on every PR. workflow_dispatch lets us
+# kick off heavy reruns manually from the Actions tab.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Cancel superseded runs on the same branch to save minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ────────────────────────────────────────────────────────────────
+  #  Job 1 — Lean proofs (fast: ~5 min)
+  #
+  #  Builds every `verify_*` executable and runs the 13 negative tests
+  #  that prove the proof gate fires when designs are broken.
+  # ────────────────────────────────────────────────────────────────
+  lean-proofs:
+    name: Lean proofs + negative tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      # ~/.elan caches the Lean toolchain Nix-shell installs; ~/.cache/mathlib
+      # is a no-op today but reserved for when we add Mathlib downstream.
+      - name: Cache Lean toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.elan
+            ~/.cache/mathlib
+          key: ${{ runner.os }}-elan-${{ hashFiles('lean-toolchain') }}
+
+      # Lake build artefacts.  Invalidate whenever lakefile.toml or any
+      # Lean source under MechProof/ or Tests/ changes.
+      - name: Cache Lake build
+        uses: actions/cache@v4
+        with:
+          path: .lake
+          key: ${{ runner.os }}-lake-${{ hashFiles('lakefile.toml',
+            'MechProof.lean', 'MechProof/**/*.lean', 'Tests/*.lean') }}
+          restore-keys: |
+            ${{ runner.os }}-lake-
+
+      - name: Build every Lean exe
+        run: nix-shell shell.nix --run 'elan default stable && lake build'
+
+      - name: Run every verify_* exe
+        run: nix-shell shell.nix --run 'make verify-all'
+
+      - name: Run all 13 negative tests
+        # `make test` mutates one Lean source line, asserts the build
+        # fails, restores the file via trap.  If even one bad design
+        # passes Lean (i.e. the proof gate is broken), this step fails
+        # and the PR is blocked.
+        run: nix-shell shell.nix --run 'make test'
+
+  # ────────────────────────────────────────────────────────────────
+  #  Job 2 — CAD generation + MuJoCo simulation + scene preview
+  #
+  #  Runs the full headline pipeline (make poc16), then renders every
+  #  generated MuJoCo scene to PNG (make preview).  Uploads the entire
+  #  out/ directory as an artifact so reviewers can download STEP files
+  #  and visual previews without leaving the PR.
+  # ────────────────────────────────────────────────────────────────
+  cad-and-sim:
+    name: CAD + simulation + previews
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Cache Lean toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/.elan
+          key: ${{ runner.os }}-elan-${{ hashFiles('lean-toolchain') }}
+
+      - name: Cache Lake build
+        uses: actions/cache@v4
+        with:
+          path: .lake
+          key: ${{ runner.os }}-lake-${{ hashFiles('lakefile.toml',
+            'MechProof.lean', 'MechProof/**/*.lean', 'Tests/*.lean') }}
+          restore-keys: |
+            ${{ runner.os }}-lake-
+
+      # The Python venv is local to the repo (./venv/) — cache it so we
+      # don't reinstall cadquery + mujoco + Pillow on every CI run.
+      - name: Cache Python venv
+        id: venv-cache
+        uses: actions/cache@v4
+        with:
+          path: venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('shell.nix') }}-v2
+
+      - name: Create venv + install Python deps
+        if: steps.venv-cache.outputs.cache-hit != 'true'
+        run: |
+          nix-shell shell.nix --run '
+            python3 -m venv venv
+            ./venv/bin/pip install --upgrade pip
+            ./venv/bin/pip install cadquery mujoco Pillow numpy
+          '
+
+      - name: Initialise Lean toolchain
+        run: nix-shell shell.nix --run 'elan default stable'
+
+      # The full PoC 1→16 chain: Lean proves, Python builds CAD, MuJoCo
+      # simulates, reports are written.  Failure here means either a
+      # Lean proof regressed or a simulator no longer agrees with the
+      # Lean numbers — both PR-blocking.
+      - name: Run full pipeline (make poc16)
+        run: nix-shell shell.nix --run 'make poc16'
+
+      # Render every MuJoCo scene from 4 standard angles → 32 PNGs.
+      - name: Render scene previews
+        run: nix-shell shell.nix --run 'make preview'
+
+      # Capture every artefact: STEP CAD, MuJoCo XML scenes, Lean-
+      # certified JSON specs, .txt reports, preview PNGs.  GitHub keeps
+      # artifacts for 90 days by default and surfaces a download link
+      # on the PR's checks page.
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mechproof-out-${{ github.sha }}
+          path: |
+            out/*.step
+            out/*.xml
+            out/*.json
+            out/*.txt
+            out/preview_*.png
+            out/camera_*.png
+            out/*.urdf
+          if-no-files-found: warn
+          retention-days: 30
