@@ -18,6 +18,11 @@ let
     xorg.libXrender
     expat
     zlib
+    # Vulkan loader + Mesa's software Vulkan ICD (Lavapipe). This lets
+    # wgpu/pygfx pick a working WebGPU backend on any Linux box —
+    # including CI runners with no GPU — without needing libGL.so.
+    vulkan-loader
+    mesa             # provides Lavapipe (lvp_icd.x86_64.json)
   ];
 in
 pkgs.mkShell {
@@ -61,5 +66,9 @@ pkgs.mkShell {
 
     # Runtime libs for OCP (CadQuery). The OCP wheel dlopens these at import.
     export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath ocpRuntimeLibs}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+
+    # Point the Vulkan loader at Mesa's Lavapipe (software) ICD so wgpu
+    # / pygfx can grab a Vulkan device without needing real GPU drivers.
+    export VK_ICD_FILENAMES=${pkgs.mesa}/share/vulkan/icd.d/lvp_icd.x86_64.json
   '';
 }

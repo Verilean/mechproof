@@ -1,0 +1,65 @@
+# Mirror of the GitHub Actions `ubuntu-latest` (= Ubuntu 24.04) runner
+# environment so we can reproduce CI failures locally without push-wait
+# cycles. Build with
+#
+#     docker build -t mechproof-ci -f .docker/Dockerfile.ci .
+#
+# and run an interactive shell with
+#
+#     docker run --rm -it -v "$PWD:/work" -w /work mechproof-ci bash
+#
+# from inside the container, the CI steps look almost the same:
+#
+#     # what the workflow's "Install xvfb + GL runtime libs" step does
+#     # is already done in this image.
+#
+#     # one-time toolchain bootstrap
+#     nix-shell shell.nix --run 'elan default stable'
+#     nix-shell shell.nix --run '
+#       python3 -m venv venv
+#       ./venv/bin/pip install --upgrade pip
+#       ./venv/bin/pip install cadquery mujoco Pillow numpy
+#     '
+#
+#     # the actual CI commands
+#     xvfb-run -a -s "-screen 0 1280x1024x24" nix-shell shell.nix --run 'make poc16'
+#     xvfb-run -a -s "-screen 0 1280x1024x24" nix-shell shell.nix --run 'make preview'
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    MUJOCO_GL=egl
+
+# Match the apt packages the workflow installs, plus the bare minimum
+# we need to download + run the Nix installer.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates curl xz-utils sudo bash git \
+        xvfb \
+        libgl1 libglu1-mesa libegl1 \
+        libx11-6 libxext6 libxrender1 libxi6 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user (Nix's single-user installer wants this).
+RUN useradd -m -s /bin/bash -u 1001 runner && \
+    echo "runner ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+USER runner
+WORKDIR /home/runner
+
+# Install Nix in single-user mode (no daemon — matches `cachix/install-nix-action`).
+RUN curl -L https://nixos.org/nix/install -o /tmp/install-nix.sh && \
+    sh /tmp/install-nix.sh --no-daemon && \
+    rm /tmp/install-nix.sh
+
+ENV PATH=/home/runner/.nix-profile/bin:$PATH
+ENV NIX_PATH=nixpkgs=channel:nixos-unstable
+
+# Pre-warm the Nix channel so the first `nix-shell` invocation in /work
+# doesn't pay the full channel-download cost.
+RUN . /home/runner/.nix-profile/etc/profile.d/nix.sh && \
+    nix-channel --add https://nixos.org/channels/nixos-unstable nixpkgs && \
+    nix-channel --update
+
+WORKDIR /work
+CMD ["bash"]

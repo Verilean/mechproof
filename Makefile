@@ -41,7 +41,7 @@ MUJOCO_GL ?= egl
         grasp-matrix summary release release-arm-hand release-all humanoid-summary \
         leg-cad humanoid-sim \
         walking-trajectory walk-sim urdf teleop \
-        heavy-sim safety-sim preview \
+        heavy-sim safety-sim preview preview-webgpu \
         verify-finger verify-tendon verify-hand verify-arm verify-legs \
         verify-walking verify-capture verify-energy verify-subsea \
         verify-env-matrix verify-heavy verify-safety verify-all env-matrix \
@@ -187,8 +187,11 @@ heavy-sim: ## PoC 15 MuJoCo 4 m stand-firm simulation + Heavy_Construction_Catal
 safety-sim: ## PoC 16 manned-mech safety sim (override + crash brace).
 	$(NIX_RUN) "$(VENV_PY) $(REPO)/python/simulate_manned.py"
 
-preview: ## Render every generated MuJoCo scene to PNGs in out/preview_*.png.
+preview: ## Render every generated MuJoCo scene to PNGs (OpenGL/EGL).
 	$(NIX_RUN) "MUJOCO_GL=$(MUJOCO_GL) $(VENV_PY) $(REPO)/python/render_overviews.py"
+
+preview-webgpu: ## Render every generated scene to PNGs via WebGPU (no OpenGL).
+	$(NIX_RUN) "WGPU_BACKEND_TYPE=Vulkan $(VENV_PY) $(REPO)/python/render_overviews_webgpu.py"
 
 grasp-matrix: ## PoC 7 grasp-matrix sim (sphere/box/cylinder → grasp_matrix.json).
 	$(NIX_RUN) "$(VENV_PY) $(REPO)/python/simulate_grasp_matrix.py"

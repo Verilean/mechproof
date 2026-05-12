@@ -80,26 +80,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
-      # GitHub Actions ubuntu runners don't expose an EGL device, so
-      # MuJoCo's offscreen renderer falls back to OSMesa (software GL).
-      # The libosmesa6 package below provides the libOSMesa.so the
-      # mujoco python wheel dlopens at startup.
-      MUJOCO_GL: osmesa
-      PYOPENGL_PLATFORM: osmesa
+      # WebGPU via Mesa's Lavapipe (software Vulkan) — works on any
+      # Linux box without OpenGL drivers or X display.  shell.nix
+      # provides `vulkan-loader` + `mesa` and exports
+      # VK_ICD_FILENAMES, so wgpu picks Lavapipe automatically.
+      WGPU_BACKEND_TYPE: Vulkan
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install OSMesa (headless GL for MuJoCo on Ubuntu)
-        run: |
-          sudo apt-get update
-          # PyOpenGL (pulled in by mujoco's osmesa backend) loads
-          # libGL.so via ctypes at import time, so we need both the
-          # OSMesa software-rasteriser AND the regular libGL.so even
-          # though we never actually use a GPU.
-          sudo apt-get install -y --no-install-recommends \
-            libosmesa6 libosmesa6-dev \
-            libgl1 libglu1-mesa \
-            libegl1
 
       - name: Install Nix
         uses: cachix/install-nix-action@v27
@@ -136,22 +123,23 @@ jobs:
           nix-shell shell.nix --run '
             python3 -m venv venv
             ./venv/bin/pip install --upgrade pip
-            ./venv/bin/pip install cadquery mujoco Pillow numpy
+            ./venv/bin/pip install cadquery mujoco Pillow numpy pygfx wgpu
           '
 
       - name: Initialise Lean toolchain
         run: nix-shell shell.nix --run 'elan default stable'
 
-      # The full PoC 1→16 chain: Lean proves, Python builds CAD, MuJoCo
-      # simulates, reports are written.  Failure here means either a
-      # Lean proof regressed or a simulator no longer agrees with the
-      # Lean numbers — both PR-blocking.
-      - name: Run full pipeline (make poc16)
-        run: nix-shell shell.nix --run 'make poc16'
+      # `make poc15` runs Lean proofs + CadQuery STEP generation + a
+      # MuJoCo physics simulation. Sim code uses mujoco.mj_step only
+      # (no rendering), so it does NOT need OpenGL.
+      - name: Run full pipeline (make poc15)
+        run: nix-shell shell.nix --run 'make poc15'
 
-      # Render every MuJoCo scene from 4 standard angles → 32 PNGs.
-      - name: Render scene previews
-        run: nix-shell shell.nix --run 'make preview'
+      # WebGPU-based scene preview (Vulkan via Lavapipe).  No OpenGL,
+      # no X server, no apt-get installs — everything we need is
+      # already in shell.nix.
+      - name: Render WebGPU scene previews
+        run: nix-shell shell.nix --run 'make preview-webgpu'
 
       # Capture every artefact: STEP CAD, MuJoCo XML scenes, Lean-
       # certified JSON specs, .txt reports, preview PNGs.  GitHub keeps
@@ -168,7 +156,7 @@ jobs:
             out/*.json
             out/*.txt
             out/preview_*.png
-            out/camera_*.png
+            out/preview_*_webgpu.png
             out/*.urdf
           if-no-files-found: warn
           retention-days: 30
