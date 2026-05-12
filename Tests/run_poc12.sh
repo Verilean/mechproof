@@ -24,7 +24,7 @@ echo "[10/12] Generating Battery / Endurance Certificate..."
 
 echo
 echo "[11/12] Running v2 teleop with energy logging..."
-MUJOCO_GL=egl ./venv/bin/python python/simulate_v2.py
+./venv/bin/python python/simulate_v2.py
 
 echo
 echo "[12/12] Done! PoC 12 artefacts:"

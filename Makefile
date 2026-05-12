@@ -27,13 +27,6 @@ comma      := ,
 # heredocs and `set -e` semantics inside negative tests behave predictably.
 NIX_RUN    := nix-shell $(REPO)/shell.nix --run
 
-# MuJoCo's offscreen renderer (`mujoco.Renderer`) only runs PoC 11's
-# `simulate_v2.py`, which uses MuJoCo's own head-camera. We default to
-# EGL; on the rare CI box without an EGL device, set MUJOCO_GL=osmesa.
-# The standalone scene-preview renderer (`make preview`) does **not**
-# use MuJoCo's GL stack — it routes through WebGPU instead.
-MUJOCO_GL ?= egl
-
 .DEFAULT_GOAL := help
 
 .PHONY: help all clean shell build \
@@ -168,13 +161,13 @@ urdf: ## PoC 11 export the humanoid as a single ROS-2 URDF file.
 	$(NIX_RUN) "$(VENV_PY) $(REPO)/python/export_urdf.py"
 
 teleop: ## PoC 11 headless teleop with head camera + IMU + PNG snapshots.
-	$(NIX_RUN) "MUJOCO_GL=$(MUJOCO_GL) $(VENV_PY) $(REPO)/python/simulate_v2.py"
+	$(NIX_RUN) "$(VENV_PY) $(REPO)/python/simulate_v2.py"
 
 battery-cert: ## PoC 12 Battery_Life_Certificate.txt (consumes verify-energy JSON).
 	$(NIX_RUN) "$(VENV_PY) $(REPO)/python/generate_battery_certificate.py"
 
 energy-sim: ## PoC 12 teleop sim with per-step energy integration → energy_profile.json.
-	$(NIX_RUN) "MUJOCO_GL=$(MUJOCO_GL) $(VENV_PY) $(REPO)/python/simulate_v2.py"
+	$(NIX_RUN) "$(VENV_PY) $(REPO)/python/simulate_v2.py"
 
 subsea-sim: ## PoC 13 MuJoCo current-face simulation in seawater.
 	$(NIX_RUN) "$(VENV_PY) $(REPO)/python/simulate_subsea.py"

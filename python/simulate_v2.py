@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import pathlib
 import re
 import sys
@@ -30,6 +31,14 @@ from typing import List, Tuple
 
 import mujoco
 import numpy as np
+import pygfx as gfx
+from rendercanvas.offscreen import OffscreenRenderCanvas
+
+# Reuse the MuJoCo→pygfx scene builder from the standalone scene-
+# preview renderer. We import the module rather than copying functions
+# so any future improvement to `build_scene` flows here automatically.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import render_overviews  # type: ignore[import-not-found]
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 SCENE_PATH = REPO_ROOT / "out" / "humanoid_scene.xml"
@@ -58,11 +67,15 @@ def inject_sensors(xml: str) -> str:
     this by string-replacement on the existing scene so the underlying
     physics stays bit-identical to PoC 8."""
 
+    # Third-person observer camera attached to the torso. Sits 1.2 m
+    # behind (-Y) and 0.5 m to the right (+X), at torso height. Looks
+    # back toward the torso centroid so the renderer captures the
+    # robot itself rather than empty floor.
     camera_tag = (
         f'\n      <camera name="head_camera" '
-        f'pos="0 0.1 0.7" '
+        f'pos="0.5 -1.2 0.0" '
         f'fovy="{CAMERA_FOVY_DEG}" '
-        f'mode="fixed" euler="1.5708 0 0"/>'
+        f'mode="targetbody" target="torso"/>'
     )
     imu_tag = '\n      <site name="imu_site" pos="0 0 0" size="0.01"/>'
 
@@ -211,16 +224,47 @@ def main() -> int:
     accel_adr = model.sensor_adr[accel_id]
     gyro_adr = model.sensor_adr[gyro_id]
 
-    # Render setup. MuJoCo's Renderer is offscreen-by-default, which is
-    # exactly what we want for CI.
-    renderer = mujoco.Renderer(
-        model, width=RENDER_WIDTH, height=RENDER_HEIGHT)
+    # Render setup — WebGPU via pygfx. The MuJoCo `<camera>` we
+    # injected with `inject_sensors` is parsed by mj_compile but never
+    # actually used as a render target; we read its world-frame pose
+    # from `data.cam_xpos` / `data.cam_xmat` each snapshot and feed it
+    # into a pygfx PerspectiveCamera. WebGPU keeps the pipeline free
+    # of any OpenGL dependency.
+    os.environ.setdefault("WGPU_BACKEND_TYPE", "Vulkan")
+    canvas = OffscreenRenderCanvas(size=(RENDER_WIDTH, RENDER_HEIGHT))
+    pgfx_renderer = gfx.WgpuRenderer(canvas)
+    head_cam_id = mujoco.mj_name2id(
+        model, mujoco.mjtObj.mjOBJ_CAMERA, "head_camera")
+    if head_cam_id < 0:
+        raise RuntimeError("head_camera not registered")
+
+    def snapshot_head_camera() -> np.ndarray:
+        """Build a fresh pygfx scene from the current MuJoCo state and
+        render it from the head camera's current world pose. Returns
+        the RGBA image as a numpy array."""
+        scene, _, _ = render_overviews.build_scene(model, data)
+        cam = gfx.PerspectiveCamera(
+            fov=CAMERA_FOVY_DEG,
+            aspect=RENDER_WIDTH / RENDER_HEIGHT)
+        cam.world.up = (0.0, 0.0, 1.0)
+        cam_pos = np.asarray(data.cam_xpos[head_cam_id])
+        # Camera looks down its own -Z axis in MuJoCo convention; we
+        # compute a lookat target one unit ahead of the camera along
+        # that axis (column 2 of the 3x3 mat is the +Z direction in
+        # world frame, so -col2 is the forward direction).
+        cam_mat = np.asarray(data.cam_xmat[head_cam_id]).reshape(3, 3)
+        forward = -cam_mat[:, 2]
+        lookat = cam_pos + forward
+        cam.local.position = tuple(cam_pos)
+        cam.show_pos(tuple(lookat), up=(0.0, 0.0, 1.0))
+        pgfx_renderer.render(scene, cam)
+        canvas.draw()
+        return np.asarray(canvas.draw())
 
     mujoco.mj_forward(model, data)
 
     # Capture an "initial" frame before stepping.
-    renderer.update_scene(data, camera="head_camera")
-    initial_frame = renderer.render()
+    initial_frame = snapshot_head_camera()
 
     n_steps = int(SIM_SECONDS / model.opt.timestep)
     imu_samples = []
@@ -292,9 +336,8 @@ def main() -> int:
         # Render snapshots at scheduled times.
         for snap_t in list(snapshot_times):
             if snap_t > 0 and abs(t - snap_t) < model.opt.timestep * 0.5:
-                renderer.update_scene(data, camera="head_camera")
-                snapshot_times[snap_t] = (snapshot_times[snap_t][0],
-                                           renderer.render())
+                frame = snapshot_head_camera()
+                snapshot_times[snap_t] = (snapshot_times[snap_t][0], frame)
 
     # Save snapshots.
     try:

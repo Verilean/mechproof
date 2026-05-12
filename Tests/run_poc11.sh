@@ -34,7 +34,7 @@ echo "[6/8] Generating URDF..."
 
 echo
 echo "[7/8] Running headless teleop (camera + IMU)..."
-MUJOCO_GL=egl ./venv/bin/python python/simulate_v2.py
+./venv/bin/python python/simulate_v2.py
 
 echo
 echo "[8/8] Done! PoC 11 (v2) artefacts ready."
