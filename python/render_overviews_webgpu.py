@@ -53,12 +53,14 @@ SCENES = [
     "finger",
 ]
 
-# (azimuth°, elevation°, distance multiplier of model.stat.extent)
+# (azimuth°, elevation°, distance multiplier of model.stat.extent).
+# Small positive elevations look down on the floor slightly so the
+# robot's feet visibly contact the ground plane.
 ANGLES = {
-    "front": (90.0, -10.0, 1.6),
-    "side":  ( 0.0, -10.0, 1.6),
-    "iso":   (45.0, -20.0, 1.7),
-    "top":   ( 0.0, -85.0, 1.6),
+    "front": (90.0, 10.0, 1.6),
+    "side":  ( 0.0, 10.0, 1.6),
+    "iso":   (45.0, 20.0, 1.7),
+    "top":   ( 0.0, 80.0, 1.6),
 }
 
 RENDER_WIDTH = 800
@@ -90,18 +92,20 @@ def geom_to_pygfx(geom_type: int, size: np.ndarray) -> gfx.Geometry | None:
     if geom_type == GT_SPHERE:
         return gfx.sphere_geometry(float(size[0]))
     if geom_type == GT_CYLINDER:
-        # MJ stores radius and half-length.
+        # MuJoCo stores (radius, half-length, _). Both MuJoCo and pygfx
+        # use the +Z axis as the cylinder's long axis with the centroid
+        # at the origin, so no axis remapping is needed.
         r, half_h = float(size[0]), float(size[1])
-        # pygfx cylinder is along +Z (matches MuJoCo's convention).
         return gfx.cylinder_geometry(
             radius_top=r, radius_bottom=r, height=2 * half_h)
     if geom_type == GT_CAPSULE:
-        # Render as a stretched ellipsoid for simplicity.
+        # MJ capsule: cylinder of (2 * half_h) along +Z, plus a hemisphere
+        # of radius r at each end. We approximate as a single cylinder of
+        # length 2 * half_h — the hemispherical caps are visually minor
+        # for preview purposes and never affect physics.
         r, half_h = float(size[0]), float(size[1])
-        # Approximate capsule as a cylinder (visual fidelity is fine
-        # for previews — collision geometry is unaffected anyway).
         return gfx.cylinder_geometry(
-            radius_top=r, radius_bottom=r, height=2 * (half_h + r))
+            radius_top=r, radius_bottom=r, height=2 * half_h)
     if geom_type == GT_ELLIPSOID:
         # pygfx has no ellipsoid; we scale a sphere via the transform
         # below. Returning a unit sphere here is correct; the per-axis
@@ -127,37 +131,34 @@ def attach_pose(mesh: gfx.Mesh, pos: np.ndarray, mat3: np.ndarray,
                 geom_type: int, size: np.ndarray) -> None:
     """Set a pygfx Mesh's pose from MuJoCo's geom_xpos + geom_xmat.
 
-    Two coordinate-system quirks need handling:
+    Mathematical setup. A point ``v_mj`` in MuJoCo world frame maps to
+    ``v_pg = T · v_mj`` in pygfx world frame, where ``T = MJ_TO_PYGFX``.
+    A rigid-body transform ``(R_mj, p_mj)`` in MuJoCo coords becomes
+    ``(T R_mj T⁻¹, T p_mj)`` in pygfx coords.
 
-      1.  MuJoCo cylinder/capsule primitives are oriented along **local +Z**,
-          but pygfx's primitives are oriented along **local +Y**.  We
-          pre-rotate the mesh so its local axis lines up before the
-          per-geom rotation is applied.
-
-      2.  MuJoCo's world frame is +X right / +Y forward / +Z up, while
-          pygfx uses +X right / +Y up / -Z forward.  We left-multiply
-          `MJ_TO_PYGFX` on both the rotation and the position so the
-          whole scene lands "right side up" in pygfx's frame.
+    Cylinder/capsule primitives ship with their long axis along **local
+    +Y** in pygfx but along **local +Z** in MuJoCo's geom_xmat
+    convention.  We compensate by right-multiplying a fixed -90°-about-X
+    rotation **before** the world-frame change of basis.  This rotates
+    the primitive's local frame so what pygfx labels "+Y" coincides with
+    what MuJoCo labels "+Z".
     """
     R_mj = np.asarray(mat3, dtype=np.float64).reshape(3, 3)
 
-    if geom_type in (GT_CYLINDER, GT_CAPSULE):
-        # Primitive-axis fix: rotate -90° about X so its long axis is +Z.
-        Ry2z = np.array([
-            [1.0, 0.0,  0.0],
-            [0.0, 0.0, -1.0],
-            [0.0, 1.0,  0.0],
-        ], dtype=np.float64)
-        R_mj = R_mj @ Ry2z
+    # World-frame change of basis. pygfx's cylinder/capsule primitive
+    # already uses +Z as its long axis (same as MuJoCo), so no
+    # primitive-level rotation is required — `T` alone handles the
+    # MJ +Z-up → pygfx +Y-up world swap.
+    T = MJ_TO_PYGFX
+    R_pg = T @ R_mj @ T.T
+    p_pg = T @ np.asarray(pos, dtype=np.float64)
 
-    # World-frame fix: MJ_TO_PYGFX · R_mj · MJ_TO_PYGFX⁻¹, applied to
-    # both the rotation and the position.
-    R = MJ_TO_PYGFX @ R_mj @ MJ_TO_PYGFX.T
-    p = MJ_TO_PYGFX @ np.asarray(pos, dtype=np.float64)
-
+    # pygfx stores the local matrix as a 4×4 in *column-major* layout.
+    # We assign through `mesh.local.matrix` which accepts a row-major
+    # numpy array and handles the conversion.
     M = np.eye(4, dtype=np.float64)
-    M[:3, :3] = R
-    M[:3, 3] = p
+    M[:3, :3] = R_pg
+    M[:3, 3] = p_pg
     mesh.local.matrix = M
 
     if geom_type == GT_ELLIPSOID:
@@ -168,13 +169,11 @@ def attach_pose(mesh: gfx.Mesh, pos: np.ndarray, mat3: np.ndarray,
 #  Scene assembly
 # ─────────────────────────────────────────────────────────────────────
 
-# Reorder MuJoCo's (X, Y, Z=up) world axes into pygfx's (X, Y=up, -Z)
-# convention. Apply to every position and every rotation matrix.
-MJ_TO_PYGFX = np.array([
-    [1.0, 0.0,  0.0],
-    [0.0, 0.0,  1.0],   # MuJoCo Z → pygfx Y
-    [0.0, -1.0, 0.0],   # MuJoCo Y → pygfx -Z
-], dtype=np.float64)
+# We make the pygfx world coincide with the MuJoCo world: +Z up,
+# +Y forward, +X right.  pygfx is happy with any "up" axis as long as
+# we tell the camera, so there is no change of basis to apply on the
+# geometry side — positions and rotations pass through unchanged.
+MJ_TO_PYGFX = np.eye(3, dtype=np.float64)
 
 
 def build_scene(model: mujoco.MjModel, data: mujoco.MjData) -> tuple:
@@ -227,23 +226,24 @@ def build_scene(model: mujoco.MjModel, data: mujoco.MjData) -> tuple:
 
 def camera_at(az_deg: float, el_deg: float,
               distance: float, lookat: np.ndarray) -> gfx.PerspectiveCamera:
-    """Spherical → cartesian camera placement around `lookat`.
+    """Spherical → cartesian camera placement around `lookat`, in the
+    MuJoCo-compatible +Z-up frame we set up in `build_scene`.
 
-    `lookat` and the resulting camera position are already in **pygfx**
-    coordinates (+Y up), because `build_scene` applies MJ_TO_PYGFX to
-    the centroid.  Azimuth/elevation are interpreted in that frame too:
-    az from +X, el from the X-Z plane.
+    Azimuth is measured from +X around the +Z axis (so az=0 looks
+    toward +X, az=90 looks toward +Y). Elevation is the angle above
+    the X-Y horizontal plane; +85° gives a near-top-down view.
     """
     az = math.radians(az_deg)
     el = math.radians(el_deg)
     pos = lookat + distance * np.array([
         math.cos(el) * math.cos(az),
-        math.sin(el),                       # elevation lifts along +Y
         math.cos(el) * math.sin(az),
+        math.sin(el),                       # elevation lifts along +Z
     ])
     cam = gfx.PerspectiveCamera(fov=45, aspect=RENDER_WIDTH / RENDER_HEIGHT)
+    cam.world.up = (0.0, 0.0, 1.0)
     cam.local.position = tuple(pos)
-    cam.look_at(tuple(lookat))
+    cam.show_pos(tuple(lookat), up=(0.0, 0.0, 1.0))
     return cam
 
 
