@@ -27,6 +27,12 @@ comma      := ,
 # heredocs and `set -e` semantics inside negative tests behave predictably.
 NIX_RUN    := nix-shell $(REPO)/shell.nix --run
 
+# Headless OpenGL backend for MuJoCo.  Default to EGL (works locally on
+# NixOS with libglvnd); CI overrides this to `osmesa` because the
+# GitHub Actions ubuntu runner doesn't expose an EGL device. Pass on
+# the command line:  `make preview MUJOCO_GL=osmesa`.
+MUJOCO_GL ?= egl
+
 .DEFAULT_GOAL := help
 
 .PHONY: help all clean shell build \
@@ -161,13 +167,13 @@ urdf: ## PoC 11 export the humanoid as a single ROS-2 URDF file.
 	$(NIX_RUN) "$(VENV_PY) $(REPO)/python/export_urdf.py"
 
 teleop: ## PoC 11 headless teleop with head camera + IMU + PNG snapshots.
-	$(NIX_RUN) "MUJOCO_GL=egl $(VENV_PY) $(REPO)/python/simulate_v2.py"
+	$(NIX_RUN) "MUJOCO_GL=$(MUJOCO_GL) $(VENV_PY) $(REPO)/python/simulate_v2.py"
 
 battery-cert: ## PoC 12 Battery_Life_Certificate.txt (consumes verify-energy JSON).
 	$(NIX_RUN) "$(VENV_PY) $(REPO)/python/generate_battery_certificate.py"
 
 energy-sim: ## PoC 12 teleop sim with per-step energy integration → energy_profile.json.
-	$(NIX_RUN) "MUJOCO_GL=egl $(VENV_PY) $(REPO)/python/simulate_v2.py"
+	$(NIX_RUN) "MUJOCO_GL=$(MUJOCO_GL) $(VENV_PY) $(REPO)/python/simulate_v2.py"
 
 subsea-sim: ## PoC 13 MuJoCo current-face simulation in seawater.
 	$(NIX_RUN) "$(VENV_PY) $(REPO)/python/simulate_subsea.py"
@@ -182,7 +188,7 @@ safety-sim: ## PoC 16 manned-mech safety sim (override + crash brace).
 	$(NIX_RUN) "$(VENV_PY) $(REPO)/python/simulate_manned.py"
 
 preview: ## Render every generated MuJoCo scene to PNGs in out/preview_*.png.
-	$(NIX_RUN) "MUJOCO_GL=egl $(VENV_PY) $(REPO)/python/render_overviews.py"
+	$(NIX_RUN) "MUJOCO_GL=$(MUJOCO_GL) $(VENV_PY) $(REPO)/python/render_overviews.py"
 
 grasp-matrix: ## PoC 7 grasp-matrix sim (sphere/box/cylinder → grasp_matrix.json).
 	$(NIX_RUN) "$(VENV_PY) $(REPO)/python/simulate_grasp_matrix.py"

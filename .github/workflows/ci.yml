@@ -79,8 +79,21 @@ jobs:
     name: CAD + simulation + previews
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    env:
+      # GitHub Actions ubuntu runners don't expose an EGL device, so
+      # MuJoCo's offscreen renderer falls back to OSMesa (software GL).
+      # The libosmesa6 package below provides the libOSMesa.so the
+      # mujoco python wheel dlopens at startup.
+      MUJOCO_GL: osmesa
+      PYOPENGL_PLATFORM: osmesa
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install OSMesa (headless GL for MuJoCo on Ubuntu)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libosmesa6 libosmesa6-dev libglu1-mesa
 
       - name: Install Nix
         uses: cachix/install-nix-action@v27
