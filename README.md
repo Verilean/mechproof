@@ -328,4 +328,18 @@ the PoC scripts' comments if you're starting fresh.
 
 ## License
 
-TBD.
+Licensed under the **Apache License, Version 2.0** — see
+[`LICENSE`](LICENSE) for the full text and [`NOTICE`](NOTICE) for the
+attribution. In short: use it, modify it, redistribute it, ship it in
+commercial products; just preserve the copyright + license notice and
+mark any files you modified.
+
+```
+Copyright 2026 Junji Hashimoto
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+```
